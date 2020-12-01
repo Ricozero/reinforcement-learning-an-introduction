@@ -10,6 +10,7 @@
 
 import numpy as np
 import pickle
+import random
 
 BOARD_ROWS = 3
 BOARD_COLS = 3
@@ -213,6 +214,7 @@ class Player:
 
         for i in reversed(range(len(states) - 1)):
             state = states[i]
+            # 从获胜的状态慢慢往前传递
             td_error = self.greedy[i] * (
                 self.estimations[states[i + 1]] - self.estimations[state]
             )
@@ -254,6 +256,28 @@ class Player:
         with open('policy_%s.bin' % ('first' if self.symbol == 1 else 'second'), 'rb') as f:
             self.estimations = pickle.load(f)
 
+class RandomPlayer:
+    def __init__(self, **kwargs):
+        self.symbol = None
+        self.state = None
+
+    def reset(self):
+        pass
+
+    def set_state(self, state):
+        self.state = state
+
+    def set_symbol(self, symbol):
+        self.symbol = symbol
+
+    def act(self):
+        spare = []
+        for i in range(BOARD_ROWS):
+            for j in range(BOARD_COLS):
+                if self.state.data[i, j] == 0:
+                    spare.append((i, j))
+        k = random.randint(0, len(spare) - 1)
+        return spare[k][0], spare[k][1], self.symbol
 
 # human interface
 # input a number to put a chessman
@@ -305,6 +329,22 @@ def train(epochs, print_every_n=500):
     player2.save_policy()
 
 
+def random_vs_ai(turns):
+    player1 = Player(epsilon=0)
+    player2 = RandomPlayer()
+    judger = Judger(player1, player2)
+    player1.load_policy()
+    player1_wins = player2_wins = 0
+    for _ in range(turns):
+        winner = judger.play()
+        if winner == 1:
+            player1_wins += 1
+        if winner == -1:
+            player2_wins += 1
+        judger.reset()
+    print('%d turns, player 1 win %d, player 2 win %d' % (turns, player1_wins, player2_wins))
+
+
 def compete(turns):
     player1 = Player(epsilon=0)
     player2 = Player(epsilon=0)
@@ -341,6 +381,4 @@ def play():
 
 
 if __name__ == '__main__':
-    train(int(1e5))
-    compete(int(1e3))
-    play()
+    random_vs_ai(int(1e4))
